@@ -1,0 +1,38 @@
+name: Check upstream TeslaMateAPI release
+
+on:
+  schedule:
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  check-update:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get latest upstream release
+        id: latest
+        run: |
+          TAG=$(curl -s https://api.github.com/repos/tobiasehlert/teslamateapi/releases/latest | jq -r .tag_name | sed 's/^v//')
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Get current pinned version
+        id: current
+        run: |
+          CURRENT=$(grep -oP '(?<=teslamateapi:)[^"[:space:]]+' teslamateapi/Dockerfile)
+          echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
+
+      - name: Bump version if a newer release exists
+        if: steps.latest.outputs.tag != steps.current.outputs.current && steps.latest.outputs.tag != ''
+        run: |
+          NEW="${{ steps.latest.outputs.tag }}"
+          sed -i "s/teslamateapi:[^\"[:space:]]*/teslamateapi:${NEW}/" teslamateapi/Dockerfile
+          sed -i "s/^version: .*/version: \"${NEW}\"/" teslamateapi/config.yaml
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add teslamateapi/Dockerfile teslamateapi/config.yaml
+          git commit -m "Bump teslamateapi to ${NEW}"
+          git push

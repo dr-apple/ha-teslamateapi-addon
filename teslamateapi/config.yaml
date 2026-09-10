@@ -1,0 +1,67 @@
+name: TeslaMate API
+version: "1.25.0"
+slug: teslamateapi
+description: REST API for TeslaMate data using tobiasehlert/teslamateapi.
+url: https://github.com/tobiasehlert/teslamateapi
+arch:
+  - amd64
+startup: services
+boot: auto
+init: false
+ingress: true
+ingress_port: 8080
+panel_icon: mdi:api
+ports:
+  8080/tcp: null
+ports_description:
+  8080/tcp: TeslaMate API HTTP
+options:
+  database_user: postgres
+  database_pass: ""
+  database_name: teslamate
+  database_host: ""
+  database_port: 5432
+  database_ssl: disable
+  database_timeout: 60000
+  encryption_key: ""
+  mqtt_host: ""
+  mqtt_port: 1883
+  mqtt_user: ""
+  mqtt_pass: ""
+  mqtt_tls: false
+  mqtt_namespace: ""
+  disable_mqtt: false
+  teslamate_host: ""
+  teslamate_port: 4000
+  teslamate_ssl: false
+  timezone: Europe/Berlin
+  api_token: ""
+  api_token_disable: false
+  debug_mode: false
+  enable_commands: false
+  commands_all: false
+schema:
+  database_user: str
+  database_pass: password
+  database_name: str
+  database_host: str
+  database_port: int
+  database_ssl: str
+  database_timeout: int
+  encryption_key: password
+  mqtt_host: str
+  mqtt_port: int
+  mqtt_user: str
+  mqtt_pass: password
+  mqtt_tls: bool
+  mqtt_namespace: str?
+  disable_mqtt: bool
+  teslamate_host: str
+  teslamate_port: int
+  teslamate_ssl: bool
+  timezone: str
+  api_token: password
+  api_token_disable: bool
+  debug_mode: bool
+  enable_commands: bool
+  commands_all: bool
