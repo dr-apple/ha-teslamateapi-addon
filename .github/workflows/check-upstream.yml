@@ -11,12 +11,19 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Get latest upstream release
         id: latest
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          TAG=$(curl -s https://api.github.com/repos/tobiasehlert/teslamateapi/releases/latest | jq -r .tag_name | sed 's/^v//')
+          TAG=$(gh api repos/tobiasehlert/teslamateapi/releases/latest --jq .tag_name)
+          TAG="${TAG#v}"
+          if ! [[ "$TAG" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Unexpected upstream tag '${TAG}'"
+            exit 1
+          fi
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
 
       - name: Get current pinned version
@@ -25,10 +32,25 @@ jobs:
           CURRENT=$(grep -oP '(?<=teslamateapi:)[^"[:space:]]+' teslamateapi/Dockerfile)
           echo "current=$CURRENT" >> "$GITHUB_OUTPUT"
 
-      - name: Bump version if a newer release exists
-        if: steps.latest.outputs.tag != steps.current.outputs.current && steps.latest.outputs.tag != ''
+      - name: Check whether upstream is newer
+        id: compare
+        env:
+          LATEST: ${{ steps.latest.outputs.tag }}
+          CURRENT: ${{ steps.current.outputs.current }}
         run: |
-          NEW="${{ steps.latest.outputs.tag }}"
+          NEWEST=$(printf '%s\n%s\n' "$CURRENT" "$LATEST" | sort -V | tail -n1)
+          if [ "$LATEST" != "$CURRENT" ] && [ "$NEWEST" = "$LATEST" ]; then
+            echo "update=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Pinned ${CURRENT} is up to date (upstream ${LATEST})"
+            echo "update=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Bump version
+        if: steps.compare.outputs.update == 'true'
+        env:
+          NEW: ${{ steps.latest.outputs.tag }}
+        run: |
           sed -i "s/teslamateapi:[^\"[:space:]]*/teslamateapi:${NEW}/" teslamateapi/Dockerfile
           sed -i "s/^version: .*/version: \"${NEW}\"/" teslamateapi/config.yaml
           git config user.name "github-actions[bot]"
